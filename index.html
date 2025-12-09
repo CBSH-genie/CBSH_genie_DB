@@ -40,15 +40,13 @@
             <i class="fas fa-circle-notch fa-spin mr-2"></i>데이터를 불러오는 중...
         </div>
     </div>
-
+    <script src="config.js"></script>
     <script>
-        // ▼▼▼ 1단계에서 복사한 CSV 링크를 따옴표 안에 넣으세요 ▼▼▼
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFPTohI1oh80EA-2VeSrBNDjGATr8J7sAM7uzOt4zJM9kkRhp92UlGJLvrzRTT91cfUikpK7WE05XC/pub?gid=0&single=true&output=csv";
-
         let allMembers = [];
 
+        // 1. 앱 시작 함수
         async function init() {
-            // 1. [핵심] 폰에 저장된 데이터가 있으면 0.1초 만에 먼저 보여줌 (기다림 X)
+            // [스피드 패치] 폰에 저장된 데이터가 있으면 먼저 보여줌 (로딩 0초)
             const cachedData = localStorage.getItem("memberData");
             if (cachedData) {
                 console.log("캐시 데이터 로드");
@@ -56,53 +54,55 @@
                 renderMembers(allMembers);
             }
 
-            // 2. 뒤에서는 최신 데이터를 서버에서 받아옴
-            await loadLatestMembers();
+            // 뒤에서는 최신 데이터를 서버에서 받아옴
+            await loadMembers();
         }
 
-        async function loadLatestMembers() {
+        // 2. 데이터 불러오기 함수 (따옴표 버그 수정됨)
+        async function loadMembers() {
             try {
-                // 캐시 방지용 난수 추가 (?t=...)
+                // 캐시 방지용 난수 추가
                 const response = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
                 const data = await response.text();
                 
                 const rows = data.split("\n").slice(1);
                 
                 const newMembers = rows.map(row => {
-                    // CSV 파싱 로직 (따옴표 처리 포함)
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                    // [버그 수정] trim()을 먼저 수행하여 숨겨진 줄바꿈 문자를 제거 후 따옴표 삭제
+                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+                                    .map(c => c.trim().replace(/^"|"$/g, '')); 
+                    
                     if(cols.length < 5) return null;
 
                     return {
-                        name: cols[0],
-                        cohort: cols[1],
-                        role: cols[2],
-                        org: cols[3],
-                        phone: cols[4],
-                        email: cols[5],
-                        interests: cols[6]
+                        name: cols[0],      // 이름
+                        cohort: cols[1],    // 기수
+                        role: cols[2],      // 직책
+                        org: cols[3],       // 직장/학교
+                        phone: cols[4],     // 전화번호
+                        email: cols[5],     // 이메일
+                        interests: cols[6]  // 관심사
                     };
                 }).filter(m => m !== null && m.name);
 
-                // 3. 데이터가 달라졌으면 화면 업데이트 & 저장
+                // 데이터가 달라졌으면 화면 업데이트 & 폰에 저장
                 if (JSON.stringify(newMembers) !== JSON.stringify(allMembers)) {
                     console.log("새 데이터 감지 -> 업데이트");
                     allMembers = newMembers;
-                    localStorage.setItem("memberData", JSON.stringify(allMembers)); // 폰에 저장
+                    localStorage.setItem("memberData", JSON.stringify(allMembers)); 
                     renderMembers(allMembers);
-                    
-                    // (선택) 업데이트 되었다고 살짝 알려주기
-                    showToast("최신 명단으로 업데이트되었습니다.");
                 }
 
             } catch (error) {
                 console.error("데이터 로딩 실패", error);
+                // 캐시 데이터도 없는데 에러가 난 경우에만 에러 메시지 표시
                 if(allMembers.length === 0) {
-                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500">데이터를 불러오지 못했습니다.</div>`;
+                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500">데이터를 불러오지 못했습니다.<br>링크를 확인해주세요.</div>`;
                 }
             }
         }
 
+        // 3. 화면 그리기 함수
         function renderMembers(members) {
             const container = document.getElementById("member-list");
             
@@ -120,7 +120,7 @@
                 const emailBtn = m.email ? `<a href="mailto:${m.email}" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-center hover:bg-gray-200 transition"><i class="fas fa-envelope mr-1"></i> 메일</a>` : '';
 
                 return `
-                <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full animate-fade-in">
+                <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
                     <div>
                         <div class="flex justify-between items-start mb-2">
                             <div>
@@ -141,17 +141,7 @@
             }).join("");
         }
 
-        // 업데이트 알림용 토스트 메시지 함수
-        function showToast(message) {
-            const toast = document.createElement("div");
-            toast.className = "fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm shadow-lg opacity-0 transition-opacity duration-300";
-            toast.innerText = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.classList.remove("opacity-0"), 100);
-            setTimeout(() => { toast.classList.add("opacity-0"); setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
-        // 검색 이벤트 리스너
+        // 4. 검색 기능
         document.getElementById("search-input").addEventListener("input", (e) => {
             const term = e.target.value.toLowerCase();
             const filtered = allMembers.filter(m => 
