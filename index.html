@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동아리 멤버 핸드북</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; }
+        .card { transition: all 0.2s ease; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .tag { background-color: #e0f2fe; color: #0369a1; }
+    </style>
+</head>
+<body class="max-w-3xl mx-auto min-h-screen p-4">
+
+    <header class="text-center py-8">
+        <div class="inline-block p-3 rounded-full bg-blue-600 text-white mb-3">
+            <i class="fas fa-users text-2xl"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900">동아리 인명사전</h1>
+        <p class="text-gray-500 mt-2">관심사가 맞는 선후배와 네트워킹하세요</p>
+    </header>
+
+    <div class="sticky top-4 z-20 mb-8">
+        <div class="relative shadow-lg rounded-2xl bg-white">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input type="text" id="search-input" 
+                   class="block w-full pl-11 pr-4 py-4 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" 
+                   placeholder="이름, 직장, 관심사(예: AI, 반도체) 검색...">
+        </div>
+    </div>
+
+    <div id="member-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
+        <div class="col-span-full text-center py-10 text-gray-500">
+            <i class="fas fa-circle-notch fa-spin mr-2"></i>데이터를 불러오는 중...
+        </div>
+    </div>
+
+    <script>
+        // ▼▼▼ 1단계에서 복사한 CSV 링크를 따옴표 안에 넣으세요 ▼▼▼
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFPTohI1oh80EA-2VeSrBNDjGATr8J7sAM7uzOt4zJM9kkRhp92UlGJLvrzRTT91cfUikpK7WE05XC/pub?gid=0&single=true&output=csv";
+
+        let allMembers = [];
+
+        async function init() {
+            // 1. [핵심] 폰에 저장된 데이터가 있으면 0.1초 만에 먼저 보여줌 (기다림 X)
+            const cachedData = localStorage.getItem("memberData");
+            if (cachedData) {
+                console.log("캐시 데이터 로드");
+                allMembers = JSON.parse(cachedData);
+                renderMembers(allMembers);
+            }
+
+            // 2. 뒤에서는 최신 데이터를 서버에서 받아옴
+            await loadLatestMembers();
+        }
+
+        async function loadLatestMembers() {
+            try {
+                // 캐시 방지용 난수 추가 (?t=...)
+                const response = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
+                const data = await response.text();
+                
+                const rows = data.split("\n").slice(1);
+                
+                const newMembers = rows.map(row => {
+                    // CSV 파싱 로직 (따옴표 처리 포함)
+                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                    if(cols.length < 5) return null;
+
+                    return {
+                        name: cols[0],
+                        cohort: cols[1],
+                        role: cols[2],
+                        org: cols[3],
+                        phone: cols[4],
+                        email: cols[5],
+                        interests: cols[6]
+                    };
+                }).filter(m => m !== null && m.name);
+
+                // 3. 데이터가 달라졌으면 화면 업데이트 & 저장
+                if (JSON.stringify(newMembers) !== JSON.stringify(allMembers)) {
+                    console.log("새 데이터 감지 -> 업데이트");
+                    allMembers = newMembers;
+                    localStorage.setItem("memberData", JSON.stringify(allMembers)); // 폰에 저장
+                    renderMembers(allMembers);
+                    
+                    // (선택) 업데이트 되었다고 살짝 알려주기
+                    showToast("최신 명단으로 업데이트되었습니다.");
+                }
+
+            } catch (error) {
+                console.error("데이터 로딩 실패", error);
+                if(allMembers.length === 0) {
+                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500">데이터를 불러오지 못했습니다.</div>`;
+                }
+            }
+        }
+
+        function renderMembers(members) {
+            const container = document.getElementById("member-list");
+            
+            if(members.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">검색 결과가 없습니다.</div>`;
+                return;
+            }
+
+            container.innerHTML = members.map(m => {
+                const tagsHtml = m.interests 
+                    ? m.interests.split(/[\/,]/).map(t => `<span class="tag text-xs font-semibold px-2 py-1 rounded-md mr-1 mb-1 inline-block">#${t.trim()}</span>`).join('') 
+                    : '';
+
+                const phoneBtn = m.phone ? `<a href="tel:${m.phone}" class="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-center hover:bg-green-100 transition"><i class="fas fa-phone mr-1"></i> 전화</a>` : '';
+                const emailBtn = m.email ? `<a href="mailto:${m.email}" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-center hover:bg-gray-200 transition"><i class="fas fa-envelope mr-1"></i> 메일</a>` : '';
+
+                return `
+                <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full animate-fade-in">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mb-1 inline-block">${m.cohort}</span>
+                                <span class="text-xs text-gray-400 ml-1">${m.role || '부원'}</span>
+                                <h3 class="text-xl font-bold text-gray-800">${m.name}</h3>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm font-medium text-gray-500 block truncate max-w-[120px]">${m.org || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="mb-4">${tagsHtml}</div>
+                    </div>
+                    <div class="flex gap-2 mt-2 pt-3 border-t border-gray-50 text-sm font-medium">
+                        ${phoneBtn} ${emailBtn}
+                    </div>
+                </div>`;
+            }).join("");
+        }
+
+        // 업데이트 알림용 토스트 메시지 함수
+        function showToast(message) {
+            const toast = document.createElement("div");
+            toast.className = "fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm shadow-lg opacity-0 transition-opacity duration-300";
+            toast.innerText = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.remove("opacity-0"), 100);
+            setTimeout(() => { toast.classList.add("opacity-0"); setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        // 검색 이벤트 리스너
+        document.getElementById("search-input").addEventListener("input", (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allMembers.filter(m => 
+                (m.name && m.name.toLowerCase().includes(term)) || 
+                (m.org && m.org.toLowerCase().includes(term)) || 
+                (m.interests && m.interests.toLowerCase().includes(term)) ||
+                (m.cohort && m.cohort.toLowerCase().includes(term))
+            );
+            renderMembers(filtered);
+        });
+
+        // 시작
+        init();
+    </script>
+</body>
+</html>
