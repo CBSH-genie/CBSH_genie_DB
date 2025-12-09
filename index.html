@@ -25,6 +25,32 @@
         .fab { transition: transform 0.2s, box-shadow 0.2s; }
         .fab:hover { transform: scale(1.05); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
         .fab:active { transform: scale(0.95); }
+        /* 알림창(토스트) 애니메이션 */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: rgba(31, 41, 55, 0.95); /* 어두운 회색 */
+            color: #fff;
+            text-align: center;
+            border-radius: 50px; /* 둥글게 */
+            padding: 12px 24px;
+            position: fixed;
+            z-index: 50;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 40px; /* 살짝 위로 떠오르는 효과 */
+        }
     </style>
 </head>
 <body class="max-w-3xl mx-auto min-h-screen pb-24 relative">
@@ -63,8 +89,9 @@
     </div>
 
     <a id="survey-fab" href="#" target="_blank" 
-       class="hidden fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl fab z-50">
-        <i class="fas fa-pen"></i>
+       class="hidden fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3.5 rounded-full shadow-xl items-center gap-2 z-50 fab hover:bg-blue-700 transition-all duration-200 group">
+        <i class="fas fa-user-edit text-lg group-hover:scale-110 transition-transform"></i>
+        <span class="font-bold text-base tracking-tight">정보 등록/수정</span>
     </a>
 
     <script src="config.js"></script>
@@ -73,26 +100,57 @@
         let allMembers = [];
 
         async function init() {
-            // 0. 설문조사 버튼 세팅
+            // 알림창 요소 생성 (자동)
+            createToastElement();
             setupSurveyButton();
 
-            // 1. 캐시 데이터 로드
             const cachedData = localStorage.getItem("memberData");
             if (cachedData) {
                 allMembers = JSON.parse(cachedData);
                 renderMembers(allMembers);
             }
-            // 2. 서버 데이터 로드
             await loadMembers();
         }
 
-        // 설문조사 버튼 활성화 함수
+        // 알림창 HTML 만들기
+        function createToastElement() {
+            const toastDiv = document.createElement("div");
+            toastDiv.id = "toast";
+            toastDiv.innerText = "클립보드에 복사되었습니다.";
+            document.body.appendChild(toastDiv);
+        }
+
+        // 복사 기능 & 알림 띄우기
+        function copyToClipboard(text, type) {
+            if (!text) return;
+            
+            // 클립보드 복사 시도
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`${type}가 복사되었습니다!`);
+            }).catch(err => {
+                // 보안상 이유로 실패할 경우 대비 (fallback)
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                showToast(`${type}가 복사되었습니다!`);
+            });
+        }
+
+        function showToast(message) {
+            const x = document.getElementById("toast");
+            x.innerText = message;
+            x.className = "show";
+            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 2500); // 2.5초 뒤 사라짐
+        }
+
         function setupSurveyButton() {
             const fab = document.getElementById('survey-fab');
-            // config.js에 변수가 있고 값이 비어있지 않은 경우에만 버튼 표시
             if (typeof SURVEY_URL !== 'undefined' && SURVEY_URL && SURVEY_URL.trim() !== "") {
                 fab.href = SURVEY_URL;
-                fab.classList.remove('hidden'); // 버튼 보이기
+                fab.classList.remove('hidden');
                 fab.classList.add('flex');
             }
         }
@@ -101,23 +159,15 @@
             try {
                 const response = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
                 const data = await response.text();
-                
                 const rows = data.split("\n").slice(1);
                 
                 const newMembers = rows.map(row => {
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
                                     .map(c => c.trim().replace(/^"|"$/g, '')); 
-                    
                     if(cols.length < 5) return null;
-
                     return {
-                        name: cols[0],
-                        cohort: cols[1],
-                        role: cols[2],
-                        org: cols[3],
-                        phone: cols[4],
-                        email: cols[5],
-                        interests: cols[6]
+                        name: cols[0], cohort: cols[1], role: cols[2],
+                        org: cols[3], phone: cols[4], email: cols[5], interests: cols[6]
                     };
                 }).filter(m => m !== null && m.name);
 
@@ -126,16 +176,9 @@
                     localStorage.setItem("memberData", JSON.stringify(allMembers)); 
                     renderMembers(allMembers);
                 }
-
-            } catch (error) {
-                console.error("데이터 로딩 실패", error);
-                if(allMembers.length === 0) {
-                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500 py-10">데이터를 불러오지 못했습니다.<br>잠시 후 다시 시도해주세요.</div>`;
-                }
-            }
+            } catch (error) { console.error(error); }
         }
 
-        // 태그 클릭 필터링
         window.filterByTag = function(tag) {
             const searchInput = document.getElementById("search-input");
             searchInput.value = tag;
@@ -160,19 +203,23 @@
 
             container.innerHTML = members.map(m => {
                 const tagsHtml = m.interests 
-                    ? m.interests.split(/[\/,]/).map(t => {
-                        const tag = t.trim();
-                        return `<span onclick="filterByTag('${tag}')" class="tag text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 mr-1.5 mb-1.5 inline-block border border-slate-200">#${tag}</span>`
-                    }).join('') 
+                    ? m.interests.split(/[\/,]/).map(t => `<span onclick="filterByTag('${t.trim()}')" class="tag text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 mr-1.5 mb-1.5 inline-block border border-slate-200">#${t.trim()}</span>`).join('') 
                     : '';
-
-                const phoneBtn = m.phone ? `<a href="tel:${m.phone}" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2"><i class="fas fa-phone-alt text-green-600"></i>전화</a>` : '';
-                const emailBtn = m.email ? `<a href="mailto:${m.email}" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2"><i class="fas fa-envelope text-blue-600"></i>메일</a>` : '';
-
-                // ▼▼▼ 여기가 수정된 부분입니다 (숫자 뒤에 '기' 추가) ▼▼▼
-                // m.cohort.replace("기", "") -> 혹시 '기'가 있으면 지우고
-                // + "기" -> 다시 '기'를 붙임 (결과: 32 -> 32기, 32기 -> 32기)
+                
                 const cohortDisplay = m.cohort ? m.cohort.replace("기", "") + "기" : "";
+
+                // ▼▼▼ 여기가 핵심! (a href 대신 button onclick 사용) ▼▼▼
+                const phoneBtn = m.phone 
+                    ? `<button onclick="copyToClipboard('${m.phone}', '전화번호')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
+                        <i class="far fa-copy text-green-600"></i> 번호복사
+                       </button>` 
+                    : '';
+                    
+                const emailBtn = m.email 
+                    ? `<button onclick="copyToClipboard('${m.email}', '이메일')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
+                        <i class="far fa-copy text-blue-600"></i> 메일복사
+                       </button>` 
+                    : '';
 
                 return `
                 <div class="card bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between h-full hover:border-blue-200">
@@ -189,12 +236,8 @@
                                 <span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg break-keep inline-block text-center border border-gray-200">${m.org || '-'}</span>
                             </div>
                         </div>
-                        
-                        <div class="mb-5 min-h-[24px]">
-                            ${tagsHtml}
-                        </div>
+                        <div class="mb-5 min-h-[24px]">${tagsHtml}</div>
                     </div>
-
                     <div class="flex gap-2 mt-auto pt-4 border-t border-gray-50">
                         ${phoneBtn} ${emailBtn}
                     </div>
@@ -202,14 +245,13 @@
             }).join("");
         }
 
+        // 검색 이벤트 리스너 등 나머지는 동일...
         const searchInput = document.getElementById("search-input");
         const clearBtn = document.getElementById("clear-btn");
-
         searchInput.addEventListener("input", (e) => {
             const term = e.target.value.toLowerCase();
             if(term.length > 0) clearBtn.classList.remove('hidden');
             else clearBtn.classList.add('hidden');
-
             const filtered = allMembers.filter(m => 
                 (m.name && m.name.toLowerCase().includes(term)) || 
                 (m.org && m.org.toLowerCase().includes(term)) || 
