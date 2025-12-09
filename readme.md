@@ -4,8 +4,8 @@
 별도의 서버나 데이터베이스 비용 없이 **Google 스프레드시트**와 **GitHub Pages**으로 운영됩니다.
 
 ## 🚀 바로가기
-- **웹사이트 주소:** [https://docs.google.com/spreadsheets/d/e/2PACX-1vTFPTohI1oh80EA-2VeSrBNDjGATr8J7sAM7uzOt4zJM9kkRhp92UlGJLvrzRTT91cfUikpK7WE05XC/pub?gid=0&single=true&output=csv]
-- **관리자용 엑셀:** [https://forms.gle/BkaXfCUPz3hYhc9F7]
+- **웹사이트 주소:** https://cbsh-genie.github.io/CBSH_genie_DB/
+- **관리자용 엑셀:** [link](https://docs.google.com/spreadsheets/d/1_RrJyaNhBlk7uDH0w_-FWXv-AZnmWPcnYyXqwmZMEkM/edit?resourcekey=&gid=0#gid=0)
 
 ---
 
