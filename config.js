@@ -1,1 +1,2 @@
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTFPTohI1oh80EA-2VeSrBNDjGATr8J7sAM7uzOt4zJM9kkRhp92UlGJLvrzRTT91cfUikpK7WE05XC/pub?gid=0&single=true&output=csv";
+const SURVEY_URL = "https://forms.gle/BkaXfCUPz3hYhc9F7";

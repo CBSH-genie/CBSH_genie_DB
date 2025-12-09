@@ -2,92 +2,101 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>동아리 멤버 핸드북</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>동아리 인명사전</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; }
-        .card { transition: all 0.2s ease; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        .tag { background-color: #e0f2fe; color: #0369a1; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        
+        /* 스켈레톤 애니메이션 */
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        
+        .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .card:active { transform: scale(0.98); }
+        .tag { cursor: pointer; transition: background-color 0.2s; }
+        .tag:hover { background-color: #dbeafe; } /* 태그 호버 효과 */
     </style>
 </head>
-<body class="max-w-3xl mx-auto min-h-screen p-4">
+<body class="max-w-3xl mx-auto min-h-screen pb-10">
 
-    <header class="text-center py-8">
-        <div class="inline-block p-3 rounded-full bg-blue-600 text-white mb-3">
-            <i class="fas fa-users text-2xl"></i>
-        </div>
-        <h1 class="text-3xl font-bold text-gray-900">동아리 인명사전</h1>
-        <p class="text-gray-500 mt-2">관심사가 맞는 선후배와 네트워킹하세요</p>
+    <header class="text-center pt-10 pb-6 px-4 bg-white shadow-sm rounded-b-3xl mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 tracking-tight">📂 동아리 인명사전</h1>
+        <p class="text-gray-500 text-sm mt-1">터치하여 선배들과 연결되어 보세요</p>
     </header>
 
-    <div class="sticky top-4 z-20 mb-8">
-        <div class="relative shadow-lg rounded-2xl bg-white">
+    <div class="sticky top-4 z-30 px-4 mb-6">
+        <div class="relative shadow-xl rounded-2xl bg-white/90 backdrop-blur-md border border-gray-100">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <i class="fas fa-search text-gray-400"></i>
             </div>
             <input type="text" id="search-input" 
-                   class="block w-full pl-11 pr-4 py-4 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" 
-                   placeholder="이름, 직장, 관심사(예: AI, 반도체) 검색...">
+                   class="block w-full pl-11 pr-10 py-4 rounded-2xl text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base" 
+                   placeholder="이름, 관심사(예: AI) 검색...">
+            <button id="clear-btn" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 hidden" onclick="clearSearch()">
+                <i class="fas fa-times-circle"></i>
+            </button>
         </div>
     </div>
 
-    <div id="member-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
-        <div class="col-span-full text-center py-10 text-gray-500">
-            <i class="fas fa-circle-notch fa-spin mr-2"></i>데이터를 불러오는 중...
+    <div id="member-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 px-4">
+        <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-40 flex flex-col justify-between">
+            <div class="flex gap-4">
+                <div class="skeleton w-12 h-12 rounded-full flex-shrink-0"></div>
+                <div class="flex-1 space-y-2">
+                    <div class="skeleton h-5 w-20"></div>
+                    <div class="skeleton h-4 w-32"></div>
+                </div>
+            </div>
+            <div class="skeleton h-8 w-full mt-4"></div>
         </div>
+        <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-40 hidden md:block"><div class="skeleton w-full h-full"></div></div>
     </div>
+
     <script src="config.js"></script>
+
     <script>
+        // 색상 팔레트 (프로필 아이콘용)
+        const COLORS = ['bg-red-100 text-red-600', 'bg-orange-100 text-orange-600', 'bg-amber-100 text-amber-600', 'bg-green-100 text-green-600', 'bg-emerald-100 text-emerald-600', 'bg-teal-100 text-teal-600', 'bg-cyan-100 text-cyan-600', 'bg-sky-100 text-sky-600', 'bg-blue-100 text-blue-600', 'bg-indigo-100 text-indigo-600', 'bg-violet-100 text-violet-600', 'bg-purple-100 text-purple-600', 'bg-fuchsia-100 text-fuchsia-600', 'bg-pink-100 text-pink-600', 'bg-rose-100 text-rose-600'];
+
         let allMembers = [];
 
-        // 1. 앱 시작 함수
         async function init() {
-            // [스피드 패치] 폰에 저장된 데이터가 있으면 먼저 보여줌 (로딩 0초)
             const cachedData = localStorage.getItem("memberData");
             if (cachedData) {
-                console.log("캐시 데이터 로드");
                 allMembers = JSON.parse(cachedData);
                 renderMembers(allMembers);
             }
-
-            // 뒤에서는 최신 데이터를 서버에서 받아옴
             await loadMembers();
         }
 
-        // 2. 데이터 불러오기 함수 (따옴표 버그 수정됨)
         async function loadMembers() {
             try {
-                // 캐시 방지용 난수 추가
                 const response = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
                 const data = await response.text();
                 
                 const rows = data.split("\n").slice(1);
                 
                 const newMembers = rows.map(row => {
-                    // [버그 수정] trim()을 먼저 수행하여 숨겨진 줄바꿈 문자를 제거 후 따옴표 삭제
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
                                     .map(c => c.trim().replace(/^"|"$/g, '')); 
                     
                     if(cols.length < 5) return null;
 
                     return {
-                        name: cols[0],      // 이름
-                        cohort: cols[1],    // 기수
-                        role: cols[2],      // 직책
-                        org: cols[3],       // 직장/학교
-                        phone: cols[4],     // 전화번호
-                        email: cols[5],     // 이메일
-                        interests: cols[6]  // 관심사
+                        name: cols[0],
+                        cohort: cols[1],
+                        role: cols[2],
+                        org: cols[3],
+                        phone: cols[4],
+                        email: cols[5],
+                        interests: cols[6]
                     };
                 }).filter(m => m !== null && m.name);
 
-                // 데이터가 달라졌으면 화면 업데이트 & 폰에 저장
                 if (JSON.stringify(newMembers) !== JSON.stringify(allMembers)) {
-                    console.log("새 데이터 감지 -> 업데이트");
                     allMembers = newMembers;
                     localStorage.setItem("memberData", JSON.stringify(allMembers)); 
                     renderMembers(allMembers);
@@ -95,55 +104,106 @@
 
             } catch (error) {
                 console.error("데이터 로딩 실패", error);
-                // 캐시 데이터도 없는데 에러가 난 경우에만 에러 메시지 표시
                 if(allMembers.length === 0) {
-                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500">데이터를 불러오지 못했습니다.<br>링크를 확인해주세요.</div>`;
+                     document.getElementById("member-list").innerHTML = `<div class="col-span-full text-center text-red-500 py-10">데이터를 불러오지 못했습니다.<br>잠시 후 다시 시도해주세요.</div>`;
                 }
             }
         }
 
-        // 3. 화면 그리기 함수
+        // 이름에서 랜덤 색상 추출 함수
+        function getColorFromName(name) {
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return COLORS[Math.abs(hash) % COLORS.length];
+        }
+
+        // 태그 클릭 시 검색 함수
+        window.filterByTag = function(tag) {
+            const searchInput = document.getElementById("search-input");
+            searchInput.value = tag;
+            searchInput.dispatchEvent(new Event('input')); // 검색 이벤트 강제 실행
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // 맨 위로 스크롤
+        }
+
+        // 검색어 초기화
+        window.clearSearch = function() {
+            const searchInput = document.getElementById("search-input");
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+            searchInput.focus();
+        }
+
         function renderMembers(members) {
             const container = document.getElementById("member-list");
             
             if(members.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">검색 결과가 없습니다.</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-20 flex flex-col items-center"><i class="fas fa-search mb-3 text-2xl"></i>검색 결과가 없습니다.</div>`;
                 return;
             }
 
             container.innerHTML = members.map(m => {
+                // 태그 클릭 기능 추가 (onclick)
                 const tagsHtml = m.interests 
-                    ? m.interests.split(/[\/,]/).map(t => `<span class="tag text-xs font-semibold px-2 py-1 rounded-md mr-1 mb-1 inline-block">#${t.trim()}</span>`).join('') 
+                    ? m.interests.split(/[\/,]/).map(t => {
+                        const tag = t.trim();
+                        return `<span onclick="filterByTag('${tag}')" class="tag text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 mr-1.5 mb-1.5 inline-block hover:bg-slate-200">#${tag}</span>`
+                    }).join('') 
                     : '';
 
-                const phoneBtn = m.phone ? `<a href="tel:${m.phone}" class="flex-1 bg-green-50 text-green-600 py-2 rounded-lg text-center hover:bg-green-100 transition"><i class="fas fa-phone mr-1"></i> 전화</a>` : '';
-                const emailBtn = m.email ? `<a href="mailto:${m.email}" class="flex-1 bg-gray-100 text-gray-600 py-2 rounded-lg text-center hover:bg-gray-200 transition"><i class="fas fa-envelope mr-1"></i> 메일</a>` : '';
+                // 전화/메일 버튼 (아이콘 강조형)
+                const phoneBtn = m.phone ? `<a href="tel:${m.phone}" class="flex-1 bg-emerald-50 text-emerald-600 py-2.5 rounded-xl text-center hover:bg-emerald-100 transition font-medium text-sm"><i class="fas fa-phone-alt mr-1.5"></i>전화</a>` : '';
+                const emailBtn = m.email ? `<a href="mailto:${m.email}" class="flex-1 bg-blue-50 text-blue-600 py-2.5 rounded-xl text-center hover:bg-blue-100 transition font-medium text-sm"><i class="fas fa-envelope mr-1.5"></i>메일</a>` : '';
+                
+                // 이름 아이콘 생성
+                const firstChar = m.name.charAt(0);
+                const colorClass = getColorFromName(m.name);
 
                 return `
-                <div class="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full">
+                <div class="card bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between h-full">
                     <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mb-1 inline-block">${m.cohort}</span>
-                                <span class="text-xs text-gray-400 ml-1">${m.role || '부원'}</span>
-                                <h3 class="text-xl font-bold text-gray-800">${m.name}</h3>
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-lg font-bold flex-shrink-0">
+                                    ${firstChar}
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800 leading-tight">${m.name}</h3>
+                                    <div class="flex items-center gap-1 mt-0.5">
+                                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">${m.cohort}</span>
+                                        <span class="text-xs text-gray-400">${m.role || '부원'}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <span class="text-sm font-medium text-gray-500 block truncate max-w-[120px]">${m.org || '-'}</span>
+                            <div class="text-right max-w-[40%]">
+                                <span class="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-lg break-keep inline-block text-center">${m.org || '-'}</span>
                             </div>
                         </div>
-                        <div class="mb-4">${tagsHtml}</div>
+                        
+                        <div class="mb-4 min-h-[24px]">
+                            ${tagsHtml}
+                        </div>
                     </div>
-                    <div class="flex gap-2 mt-2 pt-3 border-t border-gray-50 text-sm font-medium">
+
+                    <div class="flex gap-2 mt-auto pt-3 border-t border-gray-50">
                         ${phoneBtn} ${emailBtn}
                     </div>
                 </div>`;
             }).join("");
         }
 
-        // 4. 검색 기능
-        document.getElementById("search-input").addEventListener("input", (e) => {
+        // 검색 이벤트
+        const searchInput = document.getElementById("search-input");
+        const clearBtn = document.getElementById("clear-btn");
+
+        searchInput.addEventListener("input", (e) => {
             const term = e.target.value.toLowerCase();
+            
+            // X 버튼 보이기/숨기기
+            if(term.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
             const filtered = allMembers.filter(m => 
                 (m.name && m.name.toLowerCase().includes(term)) || 
                 (m.org && m.org.toLowerCase().includes(term)) || 
@@ -153,7 +213,6 @@
             renderMembers(filtered);
         });
 
-        // 시작
         init();
     </script>
 </body>
