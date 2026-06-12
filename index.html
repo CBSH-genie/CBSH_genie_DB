@@ -411,6 +411,7 @@
             btn.disabled = true;
             try {
                 const data = await postApi({ name: editTarget.name, cohort: editTarget.cohort, pin, fields: {} });
+                if (!editTarget) return; // 요청 중 모달이 닫힌 경우
                 if (!data.ok) {
                     showToast(data.error === "wrong_pin" ? "PIN이 일치하지 않습니다." : "확인에 실패했습니다. 기장에게 문의해주세요.");
                     return;
@@ -447,6 +448,7 @@
             btn.disabled = true;
             try {
                 const data = await postApi({ name: editTarget.name, cohort: editTarget.cohort, pin: editTarget.pin, fields });
+                if (!editTarget) return; // 요청 중 모달이 닫힌 경우
                 if (!data.ok) {
                     showToast("저장에 실패했습니다. 다시 시도해주세요.");
                     return;
