@@ -170,3 +170,12 @@ test("handlePost: 동명이인은 기수로 구분한다", () => {
   assert.equal(result.response.ok, true);
   assert.equal(result.rowIndex, 4);
 });
+
+test("handlePost: pin: null 로 변경 시도 → bad_request (문자열 'null' 기록 방지)", () => {
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { pin: null } },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "bad_request" });
+  assert.equal(result.updatedRow, undefined);
+});

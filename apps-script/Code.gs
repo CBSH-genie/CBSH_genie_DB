@@ -110,8 +110,9 @@ function handlePost(body, sheetData, now) {
       return { response: { ok: false, error: "field_not_editable" } };
     }
   }
-  // PIN을 빈 값으로 바꾸면 영영 수정 불가가 되므로 거부
-  if (fields.pin != null && String(fields.pin).trim() === "") {
+  // PIN을 빈 값(null 포함)으로 바꾸면 영영 수정 불가가 되므로 거부
+  if (fieldKeys.indexOf("pin") !== -1 &&
+      (fields.pin == null || String(fields.pin).trim() === "")) {
     return { response: { ok: false, error: "bad_request" } };
   }
 
