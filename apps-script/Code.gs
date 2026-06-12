@@ -83,10 +83,22 @@ function findRowIndex(sheetData, colIndex, name, cohort) {
   return -1;
 }
 
+function pinsMatch(storedPin, inputPin) {
+  if (storedPin === "" || inputPin === "") return false;
+  if (storedPin === inputPin) return true;
+  // 시트 셀이 숫자 서식이면 앞자리 0이 사라진다(예: 0421 → 421).
+  // 둘 다 숫자로만 구성된 경우 수치로도 비교해 잠금 사고를 막는다.
+  return /^[0-9]+$/.test(storedPin) && /^[0-9]+$/.test(inputPin) &&
+         Number(storedPin) === Number(inputPin);
+}
+
 // handleGet과 달리 {response, updatedRow, rowIndex} 형태를 반환한다 —
 // 시트 쓰기는 GAS 글루(doPost)의 책임이고, 순수 로직은 결과만 계산하기 때문.
 function handlePost(body, sheetData, now) {
   if (!body || !body.name || !body.cohort || body.pin == null) {
+    return { response: { ok: false, error: "bad_request" } };
+  }
+  if (!sheetData || sheetData.length === 0) {
     return { response: { ok: false, error: "bad_request" } };
   }
 
@@ -98,7 +110,7 @@ function handlePost(body, sheetData, now) {
 
   var row = sheetData[rowIndex].slice();
   var storedPin = cellToString(row[colIndex.pin]);
-  if (storedPin === "" || storedPin !== String(body.pin).trim()) {
+  if (!pinsMatch(storedPin, String(body.pin).trim())) {
     return { response: { ok: false, error: "wrong_pin" } };
   }
 
@@ -118,6 +130,16 @@ function handlePost(body, sheetData, now) {
 
   if (fieldKeys.length === 0) {
     return { response: { ok: true, member: rowToMember(row, colIndex) } };
+  }
+
+  // 대상 열이 시트에 없으면 row[undefined]에 쓰여 조용히 유실되므로 명시적으로 거부
+  for (var j = 0; j < fieldKeys.length; j++) {
+    if (colIndex[fieldKeys[j]] === undefined) {
+      return { response: { ok: false, error: "missing_column" } };
+    }
+  }
+  if (colIndex.updatedAt === undefined) {
+    return { response: { ok: false, error: "missing_column" } };
   }
 
   fieldKeys.forEach(function (field) {

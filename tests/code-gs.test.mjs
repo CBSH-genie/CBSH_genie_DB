@@ -145,6 +145,7 @@ test("handlePost: PIN 변경 가능, 빈 PIN으로 변경은 거부", () => {
   );
   assert.equal(ok.response.ok, true);
   assert.equal(ok.updatedRow[8], "9999");
+  assert.equal(ok.updatedRow[9], "2026-06-12"); // PIN만 바꿔도 최종수정일 갱신
 
   const bad = gas.handlePost(
     { name: "홍길동", cohort: "33", pin: "5678", fields: { pin: "  " } },
@@ -178,4 +179,34 @@ test("handlePost: pin: null 로 변경 시도 → bad_request (문자열 'null' 
   );
   assert.deepEqual(result.response, { ok: false, error: "bad_request" });
   assert.equal(result.updatedRow, undefined);
+});
+
+test("handlePost: 시트 PIN이 숫자 서식이어도(앞 0 소실) 인증된다", () => {
+  const sheet = sampleSheet();
+  sheet[1][8] = 421; // 시트 셀이 숫자 서식이면 "0421"이 421(number)로 저장됨
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "0421", fields: {} },
+    sheet, "2026-06-12"
+  );
+  assert.equal(result.response.ok, true);
+});
+
+test("handlePost: 빈 sheetData → bad_request (크래시 방지)", () => {
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: {} },
+    [], "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "bad_request" });
+});
+
+test("handlePost: 수정 대상 열이 시트에 없으면 missing_column", () => {
+  const sheet = [
+    ["이름", "기수", "PIN"],
+    ["홍길동", "33", "5678"]
+  ];
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { org: "X" } },
+    sheet, "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "missing_column" });
 });
