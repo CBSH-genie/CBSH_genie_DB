@@ -83,7 +83,50 @@ function findRowIndex(sheetData, colIndex, name, cohort) {
   return -1;
 }
 
+// handleGet과 달리 {response, updatedRow, rowIndex} 형태를 반환한다 —
+// 시트 쓰기는 GAS 글루(doPost)의 책임이고, 순수 로직은 결과만 계산하기 때문.
 function handlePost(body, sheetData, now) {
-  // Task 2에서 구현
-  return { response: { ok: false, error: "bad_request" } };
+  if (!body || !body.name || !body.cohort || body.pin == null) {
+    return { response: { ok: false, error: "bad_request" } };
+  }
+
+  var colIndex = buildColumnIndex(sheetData[0]);
+  var rowIndex = findRowIndex(sheetData, colIndex, body.name, body.cohort);
+  if (rowIndex === -1) {
+    return { response: { ok: false, error: "not_found" } };
+  }
+
+  var row = sheetData[rowIndex].slice();
+  var storedPin = cellToString(row[colIndex.pin]);
+  if (storedPin === "" || storedPin !== String(body.pin).trim()) {
+    return { response: { ok: false, error: "wrong_pin" } };
+  }
+
+  var fields = body.fields || {};
+  var fieldKeys = Object.keys(fields);
+
+  for (var i = 0; i < fieldKeys.length; i++) {
+    if (EDITABLE_FIELDS.indexOf(fieldKeys[i]) === -1) {
+      return { response: { ok: false, error: "field_not_editable" } };
+    }
+  }
+  // PIN을 빈 값으로 바꾸면 영영 수정 불가가 되므로 거부
+  if (fields.pin != null && String(fields.pin).trim() === "") {
+    return { response: { ok: false, error: "bad_request" } };
+  }
+
+  if (fieldKeys.length === 0) {
+    return { response: { ok: true, member: rowToMember(row, colIndex) } };
+  }
+
+  fieldKeys.forEach(function (field) {
+    row[colIndex[field]] = String(fields[field]).trim();
+  });
+  row[colIndex.updatedAt] = now;
+
+  return {
+    response: { ok: true, member: rowToMember(row, colIndex) },
+    updatedRow: row,
+    rowIndex: rowIndex
+  };
 }

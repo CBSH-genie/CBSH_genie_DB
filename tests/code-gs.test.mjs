@@ -74,3 +74,99 @@ test("handleGet: 숫자 셀(기수 등)은 문자열로 변환된다", () => {
   const result = gas.handleGet(sheet);
   assert.equal(result.members[0].cohort, "33");
 });
+
+test("handlePost: 올바른 PIN + 필드 수정 → 행 갱신 + 최종수정일 기록", () => {
+  const sheet = sampleSheet();
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { org: "삼성전자", interests: "반도체" } },
+    sheet, "2026-06-12"
+  );
+  assert.equal(result.response.ok, true);
+  assert.equal(result.response.member.org, "삼성전자");
+  assert.equal(result.response.member.updatedAt, "2026-06-12");
+  assert.equal(result.rowIndex, 1);
+  assert.equal(result.updatedRow[3], "삼성전자");  // 현재 소속 열
+  assert.equal(result.updatedRow[9], "2026-06-12"); // 최종수정일 열
+  assert.equal(result.updatedRow[0], "홍길동");     // 이름은 그대로
+  // 원본 sheetData는 변경하지 않는다 (쓰기는 글루 코드 책임)
+  assert.equal(sheet[1][3], "KAIST");
+});
+
+test("handlePost: PIN 불일치 → wrong_pin, 행 미반환", () => {
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "0000", fields: { org: "X" } },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "wrong_pin" });
+  assert.equal(result.updatedRow, undefined);
+});
+
+test("handlePost: 시트의 PIN이 빈 값이면 어떤 PIN도 거부한다", () => {
+  const sheet = sampleSheet();
+  sheet[1][8] = "";
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "", fields: {} },
+    sheet, "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "wrong_pin" });
+});
+
+test("handlePost: 없는 멤버 → not_found", () => {
+  const result = gas.handlePost(
+    { name: "없는사람", cohort: "99", pin: "1234", fields: {} },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "not_found" });
+});
+
+test("handlePost: fields가 비면 PIN 검증만 수행 (시트 수정 없음)", () => {
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: {} },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.equal(result.response.ok, true);
+  assert.equal(result.response.member.name, "홍길동");
+  assert.equal("pin" in result.response.member, false);
+  assert.equal(result.updatedRow, undefined);
+});
+
+test("handlePost: 수정 불가 필드(name 등) 시도 → field_not_editable", () => {
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { name: "변조" } },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.deepEqual(result.response, { ok: false, error: "field_not_editable" });
+});
+
+test("handlePost: PIN 변경 가능, 빈 PIN으로 변경은 거부", () => {
+  const ok = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { pin: "9999" } },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.equal(ok.response.ok, true);
+  assert.equal(ok.updatedRow[8], "9999");
+
+  const bad = gas.handlePost(
+    { name: "홍길동", cohort: "33", pin: "5678", fields: { pin: "  " } },
+    sampleSheet(), "2026-06-12"
+  );
+  assert.deepEqual(bad.response, { ok: false, error: "bad_request" });
+});
+
+test("handlePost: 필수 키 누락 → bad_request", () => {
+  for (const body of [null, {}, { name: "홍길동" }, { name: "홍길동", cohort: "33" }]) {
+    const result = gas.handlePost(body, sampleSheet(), "2026-06-12");
+    assert.deepEqual(result.response, { ok: false, error: "bad_request" });
+  }
+});
+
+test("handlePost: 동명이인은 기수로 구분한다", () => {
+  const sheet = sampleSheet();
+  sheet.push(["홍길동", "36", "부원", "충북과학고", "충북과학고", "010-9999-8888", "", "AI", "8888", ""]);
+  const result = gas.handlePost(
+    { name: "홍길동", cohort: "36", pin: "8888", fields: { interests: "AI/ML" } },
+    sheet, "2026-06-12"
+  );
+  assert.equal(result.response.ok, true);
+  assert.equal(result.rowIndex, 4);
+});
