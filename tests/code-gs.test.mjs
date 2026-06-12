@@ -16,7 +16,7 @@ function sampleSheet() {
   return [
     HEADER.slice(),
     ["홍길동", "33", "부원", "KAIST", "충북과학고 → KAIST", "010-1111-2222", "hong@example.com", "로봇/제어", "5678", "2026-01-01"],
-    ["김철수", "35", "기장", "충북과학고", "충북과학고", "010-2222-3333", "kim@example.com", "임베디드", "3333", "2026-01-02"],
+    ["김철수", "35", "기장", "충북과학고", "충북과학고", "010-2222-4444", "kim@example.com", "임베디드", "3333", "2026-01-02"],
     ["", "", "", "", "", "", "", "", "", ""]
   ];
 }
@@ -35,6 +35,7 @@ test("handleGet: PIN은 어떤 멤버 객체에도 포함되지 않는다", () =
   for (const m of result.members) {
     assert.equal("pin" in m, false);
     assert.equal(JSON.stringify(m).includes("5678"), false);
+    assert.equal(JSON.stringify(m).includes("3333"), false);
   }
 });
 
