@@ -167,9 +167,9 @@
                 ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
         }
 
-        // onclick="..." 속성 안의 JS 문자열 인자용
+        // onclick="..." 속성 안의 JS 문자열 인자용 (& 를 먼저 이스케이프해야 엔티티 스머글링을 막는다)
         function jsArg(s) {
-            return String(s ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            return String(s ?? "").replace(/&/g, "&amp;").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
         }
 
         // -----------------------------------------------------------
@@ -285,8 +285,8 @@
 
             container.innerHTML = members.map(m => {
                 // [관심사 태그] 처리
-                const interestsHtml = m.interests 
-                    ? m.interests.split(/[\/,]/).map(t => `<span onclick="filterByTag('${t.trim()}')" class="tag text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 mr-1.5 mb-1.5 inline-block border border-slate-200">#${t.trim()}</span>`).join('') 
+                const interestsHtml = m.interests
+                    ? m.interests.split(/[\/,]/).map(t => { const tag = t.trim(); return `<span onclick="filterByTag('${jsArg(tag)}')" class="tag text-xs font-medium px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 mr-1.5 mb-1.5 inline-block border border-slate-200">#${escapeHtml(tag)}</span>`; }).join('')
                     : '';
                 
                 // [NEW] [직장/학교 태그] 처리 (여러 개 지원 + 컬러풀 + 검색기능)
@@ -295,20 +295,20 @@
                         const orgName = o.trim();
                         if(!orgName) return '';
                         const style = getBadgeStyle(orgName); // 자동 색상 적용
-                        return `<span onclick="filterByTag('${orgName}')" class="cursor-pointer text-xs font-bold px-2 py-1 rounded-lg border ${style} ml-1 mb-1 inline-block hover:opacity-80 transition-opacity">${orgName}</span>`
+                        return `<span onclick="filterByTag('${jsArg(orgName)}')" class="cursor-pointer text-xs font-bold px-2 py-1 rounded-lg border ${style} ml-1 mb-1 inline-block hover:opacity-80 transition-opacity">${escapeHtml(orgName)}</span>`
                     }).join('')
                     : '<span class="text-xs text-gray-400">-</span>';
 
                 const cohortDisplay = m.cohort ? m.cohort.replace("기", "") + "기" : "";
 
-                const phoneBtn = m.phone 
-                    ? `<button onclick="copyToClipboard('${m.phone}', '전화번호')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
+                const phoneBtn = m.phone
+                    ? `<button onclick="copyToClipboard('${jsArg(m.phone)}', '전화번호')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
                         <i class="far fa-copy text-green-600"></i> 번호복사
-                       </button>` 
+                       </button>`
                     : '';
-                    
+
                 const emailBtn = m.email
-                    ? `<button onclick="copyToClipboard('${m.email}', '이메일')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
+                    ? `<button onclick="copyToClipboard('${jsArg(m.email)}', '이메일')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
                         <i class="far fa-copy text-blue-600"></i> 메일복사
                        </button>`
                     : '';
@@ -334,10 +334,10 @@
                         <div class="flex flex-col gap-2 mb-3">
                             <div class="flex justify-between items-start">
                                 <h3 class="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                                    ${m.name}
-                                    <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${cohortDisplay}</span>
+                                    ${escapeHtml(m.name)}
+                                    <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">${escapeHtml(cohortDisplay)}</span>
                                 </h3>
-                                <span class="text-xs text-gray-400 mt-1">${m.role || '부원'}</span>
+                                <span class="text-xs text-gray-400 mt-1">${escapeHtml(m.role || '부원')}</span>
                             </div>
                             
                             <div class="flex flex-wrap items-center">
