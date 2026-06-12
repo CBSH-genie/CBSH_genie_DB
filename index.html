@@ -104,12 +104,22 @@
             createToastElement();
             setupSurveyButton();
 
-            const cachedData = localStorage.getItem("memberData");
+            const cachedData = localStorage.getItem("memberData_v2");
             if (cachedData) {
                 allMembers = JSON.parse(cachedData);
                 renderMembers(allMembers);
             }
             await loadMembers();
+        }
+
+        function escapeHtml(s) {
+            return String(s ?? "").replace(/[&<>"']/g, c =>
+                ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        }
+
+        // onclick="..." 속성 안의 JS 문자열 인자용
+        function jsArg(s) {
+            return String(s ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, "&quot;");
         }
 
         // -----------------------------------------------------------
@@ -181,28 +191,23 @@
 
         async function loadMembers() {
             try {
-                const response = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
-                const data = await response.text();
-                const rows = data.split("\n").slice(1);
-                
-                const newMembers = rows.map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-                                    .map(c => c.trim().replace(/^"|"$/g, '')); 
-                    if(cols.length < 5) return null;
-                    return {
-                        name: cols[0], cohort: cols[1], role: cols[2],
-                        org: cols[3], phone: cols[4], email: cols[5], interests: cols[6]
-                    };
-                }).filter(m => m !== null && m.name);
+                const response = await fetch(API_URL + "?t=" + Date.now());
+                const data = await response.json();
+                if (!data.ok) throw new Error(data.error || "api_error");
+                const newMembers = data.members;
 
                 if (JSON.stringify(newMembers) !== JSON.stringify(allMembers)) {
                     allMembers = newMembers;
-                    localStorage.setItem("memberData", JSON.stringify(allMembers)); 
+                    localStorage.setItem("memberData_v2", JSON.stringify(allMembers));
                     renderMembers(allMembers);
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.error(error);
-                // 에러 발생 시 UI 처리 (선택사항)
+                if (allMembers.length > 0) {
+                    showToast("새 데이터를 불러오지 못해 저장된 목록을 표시합니다.");
+                } else {
+                    showToast("데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+                }
             }
         }
 
@@ -252,11 +257,26 @@
                        </button>` 
                     : '';
                     
-                const emailBtn = m.email 
+                const emailBtn = m.email
                     ? `<button onclick="copyToClipboard('${m.email}', '이메일')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
                         <i class="far fa-copy text-blue-600"></i> 메일복사
-                       </button>` 
+                       </button>`
                     : '';
+
+                const historyHtml = m.history
+                    ? `<div class="text-xs text-gray-400 mt-1.5 flex items-start gap-1.5">
+                         <i class="fas fa-route mt-0.5"></i><span>${escapeHtml(m.history)}</span>
+                       </div>`
+                    : '';
+
+                const updatedHtml = m.updatedAt
+                    ? `<span class="text-[11px] text-gray-300">최종수정 ${escapeHtml(m.updatedAt)}</span>`
+                    : '<span></span>';
+
+                const editBtn = `<button onclick="openEditModal('${jsArg(m.name)}', '${jsArg(m.cohort)}')"
+                    class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
+                    <i class="fas fa-pen text-gray-500"></i> 수정
+                   </button>`;
 
                 return `
                 <div class="card bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between h-full hover:border-blue-200">
@@ -273,13 +293,15 @@
                             <div class="flex flex-wrap items-center">
                                 ${orgHtml}
                             </div>
+                            ${historyHtml}
                         </div>
-                        
+
                         <div class="mb-5 min-h-[24px]">${interestsHtml}</div>
                     </div>
                     <div class="flex gap-2 mt-auto pt-4 border-t border-gray-50">
-                        ${phoneBtn} ${emailBtn}
+                        ${phoneBtn} ${emailBtn} ${editBtn}
                     </div>
+                    <div class="flex justify-end mt-2">${updatedHtml}</div>
                 </div>`;
             }).join("");
         }
@@ -290,11 +312,12 @@
             const term = e.target.value.toLowerCase();
             if(term.length > 0) clearBtn.classList.remove('hidden');
             else clearBtn.classList.add('hidden');
-            const filtered = allMembers.filter(m => 
-                (m.name && m.name.toLowerCase().includes(term)) || 
-                (m.org && m.org.toLowerCase().includes(term)) || 
+            const filtered = allMembers.filter(m =>
+                (m.name && m.name.toLowerCase().includes(term)) ||
+                (m.org && m.org.toLowerCase().includes(term)) ||
                 (m.interests && m.interests.toLowerCase().includes(term)) ||
-                (m.cohort && m.cohort.toLowerCase().includes(term))
+                (m.cohort && m.cohort.toLowerCase().includes(term)) ||
+                (m.history && m.history.toLowerCase().includes(term))
             );
             renderMembers(filtered);
         });
