@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 // Code.gs는 GAS용 plain JS — var/function 선언만 쓰므로 new Function으로 로드 가능.
 // GAS 전역(SpreadsheetApp 등)은 글루 함수 내부에서만 참조하므로 정의 시점에는 안전하다.
+// 실행: node --test   (Node 18+ 필요, npm 의존성 없음)
 const src = readFileSync(new URL("../apps-script/Code.gs", import.meta.url), "utf8");
 const gas = new Function(
   src + "; return { buildColumnIndex, rowToMember, findRowIndex, handleGet, handlePost };"
@@ -54,4 +55,22 @@ test("handleGet: 열 순서가 바뀌어도 헤더명 기준으로 매핑한다"
   assert.equal(result.members[0].cohort, "33");
   assert.equal(result.members[0].interests, "로봇");
   assert.equal(result.members[0].org, ""); // 없는 열은 빈 문자열
+  assert.equal("pin" in result.members[0], false);
+  assert.equal(JSON.stringify(result.members[0]).includes("5678"), false);
+});
+
+test("handleGet: 빈 시트 데이터는 빈 목록을 반환한다", () => {
+  assert.deepEqual(gas.handleGet([]), { ok: true, members: [] });
+});
+
+test("handleGet: 이름 열이 없으면 에러를 반환한다", () => {
+  const result = gas.handleGet([["기수", "관심사"], ["33", "로봇"]]);
+  assert.deepEqual(result, { ok: false, error: "missing_name_column" });
+});
+
+test("handleGet: 숫자 셀(기수 등)은 문자열로 변환된다", () => {
+  const sheet = sampleSheet();
+  sheet[1][1] = 33; // GAS getValues()는 숫자 셀을 number로 반환
+  const result = gas.handleGet(sheet);
+  assert.equal(result.members[0].cohort, "33");
 });

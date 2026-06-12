@@ -62,9 +62,11 @@ function rowToMember(row, colIndex) {
 }
 
 function handleGet(sheetData) {
+  if (!sheetData || sheetData.length === 0) return { ok: true, members: [] };
   var colIndex = buildColumnIndex(sheetData[0]);
+  if (colIndex.name === undefined) return { ok: false, error: "missing_name_column" };
   var members = sheetData.slice(1).filter(function (row) {
-    return colIndex.name !== undefined && cellToString(row[colIndex.name]) !== "";
+    return cellToString(row[colIndex.name]) !== "";
   }).map(function (row) {
     return rowToMember(row, colIndex);
   });
