@@ -36,7 +36,7 @@
             border-radius: 50px; /* 둥글게 */
             padding: 12px 24px;
             position: fixed;
-            z-index: 50;
+            z-index: 100;
             left: 50%;
             bottom: 30px;
             transform: translateX(-50%);
@@ -94,6 +94,56 @@
         <i class="fas fa-user-edit text-lg group-hover:scale-110 transition-transform"></i>
         <span class="font-bold text-base tracking-tight">정보 등록/수정</span>
     </a>
+
+    <!-- 정보 수정 모달 (z-[60]: FAB(z-50)보다 위. 토스트는 z-index:100으로 모달 위에 보이게 함) -->
+    <div id="edit-modal" class="hidden fixed inset-0 z-[60] items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="edit-modal-title" class="text-lg font-bold text-gray-900"></h2>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- 1단계: PIN 확인 -->
+            <div id="edit-step-pin">
+                <p class="text-sm text-gray-500 mb-3">본인 확인을 위해 PIN을 입력해주세요.<br>(기본값: 전화번호 뒤 4자리)</p>
+                <input id="edit-pin-input" type="password" inputmode="numeric" maxlength="8" autocomplete="off"
+                       class="w-full border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="PIN">
+                <button id="edit-pin-submit" onclick="verifyPin()"
+                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50">
+                    확인
+                </button>
+            </div>
+
+            <!-- 2단계: 정보 수정 폼 -->
+            <div id="edit-step-form" class="hidden space-y-3">
+                <label class="block text-sm font-medium text-gray-600">현재 소속
+                    <input id="edit-org" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="예: KAIST / 삼성전자">
+                </label>
+                <label class="block text-sm font-medium text-gray-600">역대 소속
+                    <input id="edit-history" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="예: 충북과학고 → KAIST">
+                </label>
+                <label class="block text-sm font-medium text-gray-600">전화번호
+                    <input id="edit-phone" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="010-0000-0000">
+                </label>
+                <label class="block text-sm font-medium text-gray-600">이메일
+                    <input id="edit-email" type="email" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </label>
+                <label class="block text-sm font-medium text-gray-600">관심사 <span class="font-normal text-gray-400">(쉼표나 / 로 구분)</span>
+                    <input id="edit-interests" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="예: 로봇/제어, 임베디드">
+                </label>
+                <label class="block text-sm font-medium text-gray-600">새 PIN <span class="font-normal text-gray-400">(바꿀 때만 입력)</span>
+                    <input id="edit-newpin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </label>
+                <button id="edit-save" onclick="submitEdit()"
+                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 mt-2">
+                    저장
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="config.js"></script>
 
@@ -320,6 +370,104 @@
                 (m.history && m.history.toLowerCase().includes(term))
             );
             renderMembers(filtered);
+        });
+
+        // ===== 정보 수정 모달 =====
+        let editTarget = null; // { name, cohort, pin }
+
+        async function postApi(payload) {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                // Content-Type을 text/plain으로 보내면 CORS preflight 없이 Apps Script로 전송 가능
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+            return response.json();
+        }
+
+        window.openEditModal = function(name, cohort) {
+            editTarget = { name, cohort, pin: null };
+            document.getElementById("edit-modal-title").innerText = `${name} (${cohort}기) 정보 수정`;
+            document.getElementById("edit-pin-input").value = "";
+            document.getElementById("edit-step-pin").classList.remove("hidden");
+            document.getElementById("edit-step-form").classList.add("hidden");
+            const modal = document.getElementById("edit-modal");
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+            document.getElementById("edit-pin-input").focus();
+        }
+
+        window.closeEditModal = function() {
+            const modal = document.getElementById("edit-modal");
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+            editTarget = null;
+        }
+
+        window.verifyPin = async function() {
+            const pin = document.getElementById("edit-pin-input").value.trim();
+            if (!pin) { showToast("PIN을 입력해주세요."); return; }
+            const btn = document.getElementById("edit-pin-submit");
+            btn.disabled = true;
+            try {
+                const data = await postApi({ name: editTarget.name, cohort: editTarget.cohort, pin, fields: {} });
+                if (!data.ok) {
+                    showToast(data.error === "wrong_pin" ? "PIN이 일치하지 않습니다." : "확인에 실패했습니다. 기장에게 문의해주세요.");
+                    return;
+                }
+                editTarget.pin = pin;
+                document.getElementById("edit-org").value = data.member.org || "";
+                document.getElementById("edit-history").value = data.member.history || "";
+                document.getElementById("edit-phone").value = data.member.phone || "";
+                document.getElementById("edit-email").value = data.member.email || "";
+                document.getElementById("edit-interests").value = data.member.interests || "";
+                document.getElementById("edit-newpin").value = "";
+                document.getElementById("edit-step-pin").classList.add("hidden");
+                document.getElementById("edit-step-form").classList.remove("hidden");
+            } catch (err) {
+                console.error(err);
+                showToast("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        window.submitEdit = async function() {
+            const fields = {
+                org: document.getElementById("edit-org").value.trim(),
+                history: document.getElementById("edit-history").value.trim(),
+                phone: document.getElementById("edit-phone").value.trim(),
+                email: document.getElementById("edit-email").value.trim(),
+                interests: document.getElementById("edit-interests").value.trim()
+            };
+            const newPin = document.getElementById("edit-newpin").value.trim();
+            if (newPin) fields.pin = newPin;
+
+            const btn = document.getElementById("edit-save");
+            btn.disabled = true;
+            try {
+                const data = await postApi({ name: editTarget.name, cohort: editTarget.cohort, pin: editTarget.pin, fields });
+                if (!data.ok) {
+                    showToast("저장에 실패했습니다. 다시 시도해주세요.");
+                    return;
+                }
+                const idx = allMembers.findIndex(m => m.name === editTarget.name && m.cohort === editTarget.cohort);
+                if (idx !== -1) allMembers[idx] = data.member;
+                localStorage.setItem("memberData_v2", JSON.stringify(allMembers));
+                renderMembers(allMembers);
+                closeEditModal();
+                showToast("정보가 수정되었습니다!");
+            } catch (err) {
+                console.error(err);
+                showToast("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 모달 바깥 클릭 시 닫기
+        document.getElementById("edit-modal").addEventListener("click", (e) => {
+            if (e.target.id === "edit-modal") closeEditModal();
         });
 
         init();
