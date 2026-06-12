@@ -153,3 +153,42 @@ function handlePost(body, sheetData, now) {
     rowIndex: rowIndex
   };
 }
+
+// ===== GAS 글루 코드 (Apps Script 환경 전용 — Node 테스트 제외 구역) =====
+
+function jsonOutput_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function readSheet_() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+}
+
+function doGet() {
+  return jsonOutput_(handleGet(readSheet_().getDataRange().getValues()));
+}
+
+function doPost(e) {
+  var body;
+  try {
+    body = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return jsonOutput_({ ok: false, error: "bad_request" });
+  }
+
+  // 동시 쓰기 방지 (읽기-수정-쓰기 사이 끼어들기 차단)
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = readSheet_();
+    var result = handlePost(body, sheet.getDataRange().getValues(), formatDateValue(new Date()));
+    if (result.updatedRow) {
+      sheet.getRange(result.rowIndex + 1, 1, 1, result.updatedRow.length)
+        .setValues([result.updatedRow]);
+    }
+    return jsonOutput_(result.response);
+  } finally {
+    lock.releaseLock();
+  }
+}
