@@ -61,7 +61,7 @@ const HEADER = ["이름", "기수", "역할", "현재 소속", "역대 소속", 
 function sampleSheet() {
   return [
     HEADER.slice(),
-    ["홍길동", "33", "부원", "KAIST", "충북과학고 → KAIST", "010-1234-5678", "hong@example.com", "로봇/제어", "5678", "2026-01-01"],
+    ["홍길동", "33", "부원", "KAIST", "충북과학고 → KAIST", "010-1111-2222", "hong@example.com", "로봇/제어", "5678", "2026-01-01"],
     ["김철수", "35", "기장", "충북과학고", "충북과학고", "010-2222-3333", "kim@example.com", "임베디드", "3333", "2026-01-02"],
     ["", "", "", "", "", "", "", "", "", ""]
   ];
@@ -106,7 +106,7 @@ test("handleGet: 열 순서가 바뀌어도 헤더명 기준으로 매핑한다"
 
 - [ ] **Step 2: 테스트 실행 — 실패 확인**
 
-Run: `node --test tests/`
+Run: `node --test`
 Expected: FAIL — `ENOENT ... apps-script/Code.gs` (파일 없음)
 
 - [ ] **Step 3: Code.gs 읽기 로직 구현**
@@ -205,7 +205,7 @@ function handlePost(body, sheetData, now) {
 
 - [ ] **Step 4: 테스트 실행 — 통과 확인**
 
-Run: `node --test tests/`
+Run: `node --test`
 Expected: PASS (4 tests)
 
 - [ ] **Step 5: 커밋**
@@ -327,7 +327,7 @@ test("handlePost: 동명이인은 기수로 구분한다", () => {
 
 - [ ] **Step 2: 테스트 실행 — 새 테스트 실패 확인**
 
-Run: `node --test tests/`
+Run: `node --test`
 Expected: Task 1의 4개 PASS, 새 테스트 다수 FAIL (handlePost가 스텁이므로)
 
 - [ ] **Step 3: handlePost 구현**
@@ -384,7 +384,7 @@ function handlePost(body, sheetData, now) {
 
 - [ ] **Step 4: 테스트 실행 — 전체 통과 확인**
 
-Run: `node --test tests/`
+Run: `node --test`
 Expected: PASS (13 tests)
 
 - [ ] **Step 5: 커밋**
@@ -450,7 +450,7 @@ function doPost(e) {
 
 - [ ] **Step 2: 구문 검사 + 기존 테스트 회귀 확인**
 
-Run: `node --check apps-script/Code.gs && node --test tests/`
+Run: `node -e "new Function(require('fs').readFileSync('apps-script/Code.gs','utf8'))" && node --test`
 Expected: 구문 에러 없음, 13 tests PASS
 
 - [ ] **Step 3: 커밋**
@@ -483,7 +483,7 @@ const gas = new Function(src + "; return { handleGet, handlePost };")();
 
 const sheetData = [
   ["이름", "기수", "역할", "현재 소속", "역대 소속", "전화", "이메일", "관심사", "PIN", "최종수정일"],
-  ["홍길동", "33", "부원", "KAIST", "충북과학고 → KAIST", "010-1234-5678", "hong@example.com", "로봇/제어", "5678", "2026-01-01"],
+  ["홍길동", "33", "부원", "KAIST", "충북과학고 → KAIST", "010-1111-2222", "hong@example.com", "로봇/제어", "5678", "2026-01-01"],
   ["김철수", "35", "기장", "충북과학고", "충북과학고", "010-2222-3333", "kim@example.com", "임베디드/키오스크", "3333", "2026-01-02"],
   ["이영희", "31", "부원", "서울대학교/네이버", "충북과학고 → 서울대 → 네이버", "010-5555-6666", "lee@example.com", "백엔드, 인프라", "6666", "2024-03-01"]
 ];
@@ -931,7 +931,7 @@ git commit -m "Add self-service edit modal with PIN verification"
 - **`index.html`**: 화면 전체 (검색, 카드, 수정 모달). Vanilla JS + Tailwind CDN.
 - **`config.js`**: `API_URL`(Apps Script 배포 주소), `SURVEY_URL`(신규 등록 폼).
 - **`apps-script/Code.gs`**: API 코드. 윗부분(순수 로직)은 Node 테스트로 검증, 아랫부분(GAS 글루)은 배포해야 동작.
-- **테스트:** `node --test tests/`
+- **테스트:** `node --test`
 - **로컬에서 화면 확인:**
   ```bash
   node tests/mock-server.mjs &          # 가짜 API (포트 8788)
@@ -945,7 +945,7 @@ Made with by 안연수 (33기)
 
 - [ ] **Step 2: 테스트 회귀 확인 + 커밋**
 
-Run: `node --test tests/`
+Run: `node --test`
 Expected: PASS
 
 ```bash
@@ -959,7 +959,7 @@ git commit -m "Rewrite readme as handover manual for Apps Script architecture"
 
 - [ ] **Step 1: 전체 테스트**
 
-Run: `node --test tests/ && node --check apps-script/Code.gs`
+Run: `node --test && node -e "new Function(require('fs').readFileSync('apps-script/Code.gs','utf8'))"`
 Expected: 13 tests PASS, 구문 에러 없음
 
 - [ ] **Step 2: 풀스택 스모크 (mock)**
