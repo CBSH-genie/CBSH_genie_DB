@@ -82,7 +82,12 @@
 
 ## 💻 개발자용 정보
 
-- **`index.html`**: 화면 전체 (검색, 카드, 수정 모달). Vanilla JS + Tailwind CDN.
+- **`index.html`**: 화면 전체 (검색, 카드, 수정 모달). Vanilla JS + Tailwind(정적 빌드). 아이콘은 인라인 SVG라 외부 CDN 의존이 없습니다.
+- **`styles.css`**: Tailwind 정적 빌드 결과물(커밋됨). **index.html에 새 Tailwind 클래스를 추가했을 때만** 아래 한 줄로 재생성:
+  ```bash
+  npx -y tailwindcss@3.4.17 -i tailwind.source.css -o styles.css --content index.html --minify
+  ```
+  (클래스를 안 바꿨으면 재생성 불필요. 예전처럼 CDN으로 돌리고 싶으면 `<link rel="stylesheet" href="styles.css">`를 `<script src="https://cdn.tailwindcss.com"></script>`로 교체해도 동작합니다.)
 - **`config.js`**: `API_URL`(Apps Script 배포 주소), `SURVEY_URL`(신규 등록 폼).
 - **`apps-script/Code.gs`**: API 코드. 윗부분(순수 로직)은 Node 테스트로 검증, 아랫부분(GAS 글루)은 배포해야 동작.
 - **테스트:** `node --test` (Node 18+ 필요, npm 의존성 없음)

@@ -2,29 +2,37 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>충북과학고 공학동아리 DB</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📂</text></svg>">
+    <!-- styles.css는 Tailwind 정적 빌드 결과물. 클래스를 새로 쓰면 readme의 한 줄 명령으로 재생성 -->
+    <link rel="stylesheet" href="styles.css">
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
-        
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
+        h1 { text-wrap: balance; }
+
+        /* 인라인 SVG 아이콘 (Font Awesome CDN 대체) */
+        .icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; flex-shrink: 0; }
+
         /* 스켈레톤 로딩 애니메이션 */
         .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        
-        .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .card:active { transform: scale(0.98); }
-        
+
         /* 태그 스타일 */
-        .tag { cursor: pointer; transition: all 0.2s; }
+        .tag { cursor: pointer; transition: background-color 0.2s, color 0.2s; }
         .tag:hover { background-color: #dbeafe; color: #1e40af; }
-        
+
         /* 플로팅 버튼 애니메이션 */
-        .fab { transition: transform 0.2s, box-shadow 0.2s; }
+        .fab { transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s; }
         .fab:hover { transform: scale(1.05); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
-        .fab:active { transform: scale(0.95); }
+        .fab:active { transform: scale(0.96); }
+
+        /* 모달 열림 애니메이션 (display 토글 시마다 재생) */
+        #edit-modal:not(.hidden) { animation: fade-in 0.15s ease-out; }
+        #edit-modal:not(.hidden) > div { animation: pop-in 0.18s cubic-bezier(0.2, 0, 0, 1); }
+        @keyframes fade-in { from { opacity: 0; } }
+        @keyframes pop-in { from { opacity: 0; transform: scale(0.97) translateY(8px); } }
 
         /* 알림창(토스트) 애니메이션 */
         #toast {
@@ -63,14 +71,14 @@
 
     <div class="sticky top-4 z-30 px-4 mb-6">
         <div class="relative shadow-lg rounded-2xl bg-white/95 backdrop-blur-md border border-gray-100">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <i class="fas fa-search text-gray-400"></i>
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </div>
             <input type="text" id="search-input" 
-                   class="block w-full pl-11 pr-10 py-4 rounded-2xl text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base" 
+                   class="block w-full pl-11 pr-10 py-4 rounded-2xl text-gray-900 placeholder-gray-400 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow text-base"
                    placeholder="이름, 소속, 관심사(예: 보행로봇) 검색...">
-            <button id="clear-btn" class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 hidden" onclick="clearSearch()">
-                <i class="fas fa-times-circle"></i>
+            <button id="clear-btn" class="absolute inset-y-0 right-0 pr-4 pl-3 flex items-center text-gray-400 hover:text-gray-600 hidden" onclick="clearSearch()" aria-label="검색어 지우기">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
             </button>
         </div>
     </div>
@@ -90,8 +98,8 @@
     </div>
 
     <a id="survey-fab" href="#" target="_blank" 
-       class="hidden fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3.5 rounded-full shadow-xl items-center gap-2 z-50 fab hover:bg-blue-700 transition-all duration-200 group">
-        <i class="fas fa-user-edit text-lg group-hover:scale-110 transition-transform"></i>
+       class="hidden fixed bottom-6 right-6 bg-blue-600 text-white px-6 py-3.5 rounded-full shadow-xl items-center gap-2 z-50 fab hover:bg-blue-700 group">
+        <svg class="icon text-lg group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
         <span class="font-bold text-base tracking-tight">정보 등록/수정</span>
     </a>
 
@@ -100,8 +108,8 @@
         <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h2 id="edit-modal-title" class="text-lg font-bold text-gray-900"></h2>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fas fa-times text-lg"></i>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 p-3 -m-3" aria-label="닫기">
+                    <svg class="icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                 </button>
             </div>
 
@@ -112,7 +120,7 @@
                        class="w-full border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="PIN">
                 <button id="edit-pin-submit" onclick="verifyPin()"
-                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50">
+                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition active:scale-[0.96]">
                     확인
                 </button>
             </div>
@@ -138,7 +146,7 @@
                     <input id="edit-newpin" type="password" inputmode="numeric" maxlength="8" autocomplete="off" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </label>
                 <button id="edit-save" onclick="submitEdit()"
-                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 mt-2">
+                        class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 mt-2 transition active:scale-[0.96]">
                     저장
                 </button>
             </div>
@@ -154,10 +162,16 @@
             createToastElement();
             setupSurveyButton();
 
-            const cachedData = localStorage.getItem("memberData_v2");
-            if (cachedData) {
-                allMembers = JSON.parse(cachedData);
-                renderMembers(allMembers);
+            // 캐시가 깨져 있어도 페이지가 죽지 않도록 가드
+            try {
+                const cachedData = localStorage.getItem("memberData_v2");
+                const parsed = cachedData ? JSON.parse(cachedData) : null;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    allMembers = parsed;
+                    renderMembers(allMembers);
+                }
+            } catch (e) {
+                localStorage.removeItem("memberData_v2");
             }
             await loadMembers();
         }
@@ -165,6 +179,17 @@
         function escapeHtml(s) {
             return String(s ?? "").replace(/[&<>"']/g, c =>
                 ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        }
+
+        // 인라인 SVG 아이콘 (Font Awesome CDN 대체)
+        const ICON_PATHS = {
+            search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+            copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+            route: '<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
+            pen: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'
+        };
+        function svgIcon(name, cls = "") {
+            return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
         }
 
         // onclick="..." 속성 안의 JS 문자열 인자용 (& 를 먼저 이스케이프해야 엔티티 스머글링을 막는다)
@@ -279,7 +304,7 @@
             const container = document.getElementById("member-list");
             
             if(members.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-20 flex flex-col items-center"><i class="fas fa-search mb-3 text-2xl"></i>검색 결과가 없습니다.</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-gray-400 py-20 flex flex-col items-center">${svgIcon('search', 'mb-3 text-2xl')}검색 결과가 없습니다.</div>`;
                 return;
             }
 
@@ -301,21 +326,23 @@
 
                 const cohortDisplay = m.cohort ? m.cohort.replace("기", "") + "기" : "";
 
+                const cardBtnCls = "flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100 active:scale-[0.96]";
+
                 const phoneBtn = m.phone
-                    ? `<button onclick="copyToClipboard('${jsArg(m.phone)}', '전화번호')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
-                        <i class="far fa-copy text-green-600"></i> 번호복사
+                    ? `<button onclick="copyToClipboard('${jsArg(m.phone)}', '전화번호')" class="${cardBtnCls}">
+                        ${svgIcon('copy', 'text-green-600')} 번호복사
                        </button>`
                     : '';
 
                 const emailBtn = m.email
-                    ? `<button onclick="copyToClipboard('${jsArg(m.email)}', '이메일')" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
-                        <i class="far fa-copy text-blue-600"></i> 메일복사
+                    ? `<button onclick="copyToClipboard('${jsArg(m.email)}', '이메일')" class="${cardBtnCls}">
+                        ${svgIcon('copy', 'text-blue-600')} 메일복사
                        </button>`
                     : '';
 
                 const historyHtml = m.history
                     ? `<div class="text-xs text-gray-400 mt-1.5 flex items-start gap-1.5">
-                         <i class="fas fa-route mt-0.5"></i><span>${escapeHtml(m.history)}</span>
+                         ${svgIcon('route', 'mt-0.5')}<span>${escapeHtml(m.history)}</span>
                        </div>`
                     : '';
 
@@ -324,12 +351,12 @@
                     : '<span></span>';
 
                 const editBtn = `<button onclick="openEditModal('${jsArg(m.name)}', '${jsArg(m.cohort)}')"
-                    class="flex-1 bg-white border border-gray-200 text-gray-700 py-2.5 rounded-xl text-center hover:bg-gray-50 transition font-medium text-sm flex items-center justify-center gap-2 cursor-pointer active:bg-gray-100">
-                    <i class="fas fa-pen text-gray-500"></i> 수정
+                    class="${cardBtnCls}">
+                    ${svgIcon('pen', 'text-gray-500')} 수정
                    </button>`;
 
                 return `
-                <div class="card bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between h-full hover:border-blue-200">
+                <div class="card bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col justify-between h-full hover:border-blue-200 transition-colors">
                     <div>
                         <div class="flex flex-col gap-2 mb-3">
                             <div class="flex justify-between items-start">
